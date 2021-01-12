@@ -187,7 +187,8 @@ def predict_class(document):
             try:
                 log_likelihood += math.log(word_probability[w][c])
             except KeyError:
-                print(w + ' - ' + c)
+                log_likelihood += 0
+                # print(w + ' - ' + c)
 
         doc_predict_sum[c] = class_probability[c] + log_likelihood
 
