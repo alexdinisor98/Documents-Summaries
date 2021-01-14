@@ -8,9 +8,14 @@ from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
 
+RAW = 0
+RM_STOP_WORDS = 1
+LEMMATIZATION = 2
+LEMM_WITH_RM_STOPW = 3
+
 
 class DocumentProcessor(object):
-    def __init__(self, orig_doc=None, word_tokenizer=None,  summarised_doc=None):
+    def __init__(self, orig_doc=None, word_tokenizer=None, summarised_doc=None):
         self.orig_doc = orig_doc
         self.word_tokenizer = word_tokenizer
         self.summarised_doc = summarised_doc
@@ -22,7 +27,6 @@ def get_documents_dict(articles_dir):
 
     for d in os.scandir(articles_dir):
         if d.is_dir():
-
             for f in os.listdir(d.path):
                 absolute_path = d.path + '/' + f
 
@@ -41,7 +45,6 @@ def get_summaries_dict(summaries_dir):
 
     for d in os.scandir(summaries_dir):
         if d.is_dir():
-
             for f in os.listdir(d.path):
                 absolute_path = d.path + '/' + f
 
@@ -105,8 +108,10 @@ def remove_stop_words(document):
     return [w for w in document.word_tokenizer if not w in stop_words]
 
 
-print(len(training_set_dict['business']['001.txt'].word_tokenizer))
-print(len(remove_stop_words(training_set_dict['business']['001.txt'])))
+print('dim voc article -> ' +
+      str(len(training_set_dict['business']['001.txt'].word_tokenizer)))
+print('dim voc RM STOP WORDS article -> ' +
+      str(len(remove_stop_words(training_set_dict['business']['001.txt']))))
 
 
 def get_wordnet_pos(word):
@@ -120,70 +125,94 @@ def get_wordnet_pos(word):
     return tag_dict.get(tag, wordnet.NOUN)
 
 
-def get_lemmatizer(document):
+def get_lemmatizer(document_tokenized):
     lemmatizer = WordNetLemmatizer()
-    document.word_tokenizer = [w.lower() for w in document.word_tokenizer]
+    document_tokenized = [w.lower() for w in document_tokenized]
     return [lemmatizer.lemmatize(w, get_wordnet_pos(w))
-            for w in document.word_tokenizer]
+            for w in document_tokenized]
 
 
-# print(get_lemmatizer(training_dict['business']['001.txt']))
+# (get_lemmatizer(training_dict['business']['001.txt']))
 
 
 ck = ['business', 'entertainment', 'politics', 'sport', 'tech']
 
 total_docs = sum(len(training_set_dict[k]) for k in ck)
-
 class_probability = {k: len(training_set_dict[k]) / total_docs for k in ck}
 
-alpha = 1
-vocabulary_dim = 0
 
-total_words_ck = defaultdict(list)
-word_probability = defaultdict(dict)
+def get_word_probability(preprocessing_step):
+    word_probability = defaultdict(dict)
+
+    alpha = 1
+    vocabulary_dim = 0
+
+    total_words_ck = defaultdict(list)
+    word_occurence = defaultdict(dict)
+    total_words = []
+
+    for key_class in training_set_dict:
+        for key_doc in training_set_dict[key_class]:
+
+            if preprocessing_step == RM_STOP_WORDS:
+                doc = remove_stop_words(training_set_dict[key_class][key_doc])
+            elif preprocessing_step == LEMMATIZATION:
+                doc = get_lemmatizer(
+                    training_set_dict[key_class][key_doc].word_tokenizer)
+            elif preprocessing_step == LEMM_WITH_RM_STOPW:
+                doc = get_lemmatizer(remove_stop_words(
+                    training_set_dict[key_class][key_doc]))
+            else:
+                doc = training_set_dict[key_class][key_doc].word_tokenizer
+
+            total_words_ck[key_class] += doc
+
+        total_words += list(set(total_words_ck[key_class]))
+
+        word_freq_ck = Counter(list(total_words_ck[key_class]))
+        for unique_w in word_freq_ck.keys():
+            word_occurence[unique_w][key_class] = word_freq_ck[unique_w]
+
+    vocabulary_dim = len(total_words)
+
+    # solving KeyError for certain words in certain classes
+    for w in total_words:
+        for c in ck:
+            try:
+                x = word_occurence[w][c]
+            except KeyError:
+                word_occurence[w][c] = 0
+
+    for unique_w in word_occurence:
+        for c in word_occurence[unique_w]:
+            word_probability[unique_w][c] = (
+                word_occurence[unique_w][c] + alpha) / (len(total_words_ck[c]) + vocabulary_dim + alpha)
+
+    return word_probability
 
 
-word_occurence = defaultdict(dict)
-total_words = []
+def predict_class(document, class_probability, word_probability, preprocessing_step):
+    """Predict the class for the document.
 
-for key_class in training_set_dict:
-    for key_doc in training_set_dict[key_class]:
-        total_words_ck[key_class] += training_set_dict[key_class][key_doc].word_tokenizer
+    Maximizes the log likelihood to prevent underflow.
 
-    total_words += list(set(total_words_ck[key_class]))
+    :param document: Document to predict a class for.
+    :return: The predicted class.
+    """
 
-    word_freq_ck = Counter(list(total_words_ck[key_class]))
-    for unique_w in word_freq_ck.keys():
-        word_occurence[unique_w][key_class] = word_freq_ck[unique_w]
-
-vocabulary_dim = len(total_words)
-
-# solving KeyError for certain words in certain classes
-
-
-for w in total_words:
-    for c in ck:
-        try:
-            x = word_occurence[w][c]
-        except KeyError:
-            word_occurence[w][c] = 0
-
-
-for unique_w in word_occurence:
-    for c in word_occurence[unique_w]:
-        word_probability[unique_w][c] = (
-            word_occurence[unique_w][c] + alpha) / (len(total_words_ck[c]) + vocabulary_dim + alpha)
-
-
-class_prediction = defaultdict(dict)
-
-
-def predict_class(document):
+    if preprocessing_step == RM_STOP_WORDS:
+        doc = remove_stop_words(document)
+    elif preprocessing_step == LEMMATIZATION:
+        doc = get_lemmatizer(document.word_tokenizer)
+    elif preprocessing_step == LEMM_WITH_RM_STOPW:
+        doc = get_lemmatizer(remove_stop_words(document))
+    else:
+        doc = document.word_tokenizer
 
     doc_predict_sum = defaultdict(dict)
     for c in ck:
         log_likelihood = 0
-        for w in list(set(document.word_tokenizer)):
+        for w in list(set(doc)):
             try:
                 log_likelihood += math.log(word_probability[w][c])
             except KeyError:
@@ -195,23 +224,17 @@ def predict_class(document):
     return max(doc_predict_sum.items(), key=operator.itemgetter(1))[0]
 
 
-print(predict_class(training_set_dict['business']['001.txt']))
-print(predict_class(training_set_dict['entertainment']['001.txt']))
-
-
-def predict(test_set_dict):
+def predict(test_set_dict, class_probability, word_probability, preprocessing_step):
     """Predict target values for test set.
-    :param test_set: Test set with dimension m x n,
-                     where m is the number of examples,
-                     and n is the number of features.
-    :return: Predicted target values for test set with dimension m,
-             where m is the number of examples.
+    :param test_set_dict: Test set dictionary.
+    :return: Predicted target values for test set =.
     """
 
     predictions = defaultdict(dict)
     for key_class in test_set_dict:
         for key_doc in test_set_dict[key_class]:
-            result = predict_class(test_set_dict[key_class][key_doc])
+            result = predict_class(
+                test_set_dict[key_class][key_doc], class_probability, word_probability, preprocessing_step)
             predictions[key_class][key_doc] = result
 
     return predictions
@@ -219,7 +242,7 @@ def predict(test_set_dict):
 
 def get_precision(test_set_dict, predictions):
     """Get precision of predictions on test set.
-    :param test_set: The set of records to test the model with.
+    :param test_set_dict: The set of records to test the model with.
     :param predictions: Predictions for the test set.
     :return: The precision of the model.
     """
@@ -235,4 +258,62 @@ def get_precision(test_set_dict, predictions):
     return num_correct / num_predictions
 
 
-print(get_precision(test_set_dict, predict(test_set_dict)))
+def get_recall(test_set_dict, predictions, article_class):
+    """Get recall of predictions on test set .
+    :param test_set_dict: The set of records to test the model with.
+    :param predictions: Predictions for the test set.
+    :param article_class: Class ck.
+    :return: The recall of the class model.
+    """
+
+    num_correct_ck = 0
+
+    num_documents_ck = len(test_set_dict[article_class].values())
+
+    for key_doc in test_set_dict[article_class]:
+        if article_class == predictions[article_class][key_doc]:
+            num_correct_ck += 1
+
+    return num_correct_ck / float(num_documents_ck)
+
+
+word_probability = get_word_probability(RM_STOP_WORDS)
+print(predict_class(
+    training_set_dict['business']['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
+print(predict_class(training_set_dict['entertainment']
+                    ['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
+# raw
+print('RAW')
+word_probability = get_word_probability(RAW)
+print(len(word_probability))
+raw_precision = get_precision(test_set_dict, predict(
+    test_set_dict, class_probability, word_probability, RAW))
+print(raw_precision)
+
+raw_recall = {c: get_recall(
+    test_set_dict, predict(test_set_dict, class_probability, word_probability, RAW), c) for c in ck}
+print(raw_recall)
+
+# removing stop words
+print('RM STOP WORDS')
+word_prob = get_word_probability(RM_STOP_WORDS)
+print(len(word_prob))
+rm_stop_words_precision = get_precision(test_set_dict, predict(
+    test_set_dict, class_probability, word_prob, RM_STOP_WORDS))
+print(rm_stop_words_precision)
+
+rm_stop_words_recall = {c: get_recall(
+    test_set_dict, predict(test_set_dict, class_probability, word_prob, RM_STOP_WORDS), c) for c in ck}
+print(rm_stop_words_recall)
+
+# with lemmatization of words
+# print('LEMMATIZATION')
+# word_prob = get_word_probability(LEMMATIZATION)
+# print(len(word_prob))
+# lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, class_probability, word_prob, LEMMATIZATION))
+# print(lemm_with_rm_stopw_precision)
+
+# lemm_with_rm_stopw_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, class_probability, word_prob, LEMMATIZATION), c) for c in ck}
+# print(lemm_with_rm_stopw_recall)
