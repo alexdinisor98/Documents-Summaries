@@ -56,9 +56,17 @@ def get_wordnet_pos(word):
     return tag_dict.get(tag, wordnet.NOUN)
 
 
-lemmatizer = WordNetLemmatizer()
-mystr = 'A walking stones. abc 4 corpus 5 walks 2 running? Stone walked.'
-mystr = [w.lower() for w in word_tokenize(mystr)]
-print(mystr)
-print([lemmatizer.lemmatize(w, get_wordnet_pos(w))
-       for w in mystr])
+# lemmatizer = WordNetLemmatizer()
+# mystr = 'A walking stones. abc 4 corpus 5 walks 2 running? Stone walked.'
+# mystr = [w.lower() for w in word_tokenize(mystr)]
+# print(mystr)
+# print([lemmatizer.lemmatize(w, get_wordnet_pos(w))
+#        for w in mystr])
+test_list1 = ['y', 'ab', '123', 'ab', '123', 'asw']
+print(list(set(test_list1)))
+
+l1 = defaultdict(dict)
+l1[0] = test_list1
+l1[1] = test_list2
+print(list(l1.values()))
+print(list(set([item for sublist in list(l1.values()) for item in sublist])))

@@ -67,6 +67,7 @@ def get_final_dict(docs_dir, summaries_dir):
         for key_doc in docs_dict[key_class]:
             doc = docs_dict[key_class][key_doc]
             word_tokens = word_tokenize(doc)
+            word_tokens = [w.lower() for w in word_tokens]
 
             set_dict[key_class][key_doc] = DocumentProcessor(
                 orig_doc=doc,
@@ -83,7 +84,6 @@ training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 docs_test_dir = 'Test Set/News Articles/'
 summaries_test_dir = 'Test Set/Summaries/'
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
-# tokenizer in words and sentecizer
 
 
 def get_sentecizer():
@@ -105,8 +105,11 @@ def remove_stop_words(document):
         lines = fp.readlines()
         stop_words = [l.strip() for l in lines]
 
+    document_tokenized = [w.lower() for w in document.word_tokenizer]
     return [w for w in document.word_tokenizer if not w in stop_words]
 
+
+# print(remove_stop_words(training_set_dict['business']['001.txt']))
 
 print('dim voc article -> ' +
       str(len(training_set_dict['business']['001.txt'].word_tokenizer)))
@@ -166,14 +169,18 @@ def get_word_probability(preprocessing_step):
                 doc = training_set_dict[key_class][key_doc].word_tokenizer
 
             total_words_ck[key_class] += doc
-
-        total_words += list(set(total_words_ck[key_class]))
+            total_words += doc
 
         word_freq_ck = Counter(list(total_words_ck[key_class]))
         for unique_w in word_freq_ck.keys():
             word_occurence[unique_w][key_class] = word_freq_ck[unique_w]
 
+    print(len(total_words))
+    total_words = list(set(total_words))
     vocabulary_dim = len(total_words)
+    print('VOCABULARY DIM: ' + str(vocabulary_dim))
+    # for c in ck:
+    #     total_words_ck[c] = list(set(total_words_ck[c]))
 
     # solving KeyError for certain words in certain classes
     for w in total_words:
@@ -217,7 +224,6 @@ def predict_class(document, class_probability, word_probability, preprocessing_s
                 log_likelihood += math.log(word_probability[w][c])
             except KeyError:
                 log_likelihood += 0
-                # print(w + ' - ' + c)
 
         doc_predict_sum[c] = class_probability[c] + log_likelihood
 
@@ -282,38 +288,41 @@ print(predict_class(
     training_set_dict['business']['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
 print(predict_class(training_set_dict['entertainment']
                     ['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
-# raw
-print('RAW')
-word_probability = get_word_probability(RAW)
-print(len(word_probability))
-raw_precision = get_precision(test_set_dict, predict(
-    test_set_dict, class_probability, word_probability, RAW))
-print(raw_precision)
 
-raw_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, class_probability, word_probability, RAW), c) for c in ck}
-print(raw_recall)
+# # raw
+# print('---- RAW ----')
+# word_probability = get_word_probability(RAW)
 
-# removing stop words
-print('RM STOP WORDS')
-word_prob = get_word_probability(RM_STOP_WORDS)
-print(len(word_prob))
-rm_stop_words_precision = get_precision(test_set_dict, predict(
-    test_set_dict, class_probability, word_prob, RM_STOP_WORDS))
-print(rm_stop_words_precision)
+# raw_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, class_probability, word_probability, RAW))
+# print(raw_precision)
 
-rm_stop_words_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, class_probability, word_prob, RM_STOP_WORDS), c) for c in ck}
-print(rm_stop_words_recall)
+# raw_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, class_probability, word_probability, RAW), c) for c in ck}
+# print(raw_recall)
 
-# with lemmatization of words
-# print('LEMMATIZATION')
-# word_prob = get_word_probability(LEMMATIZATION)
-# print(len(word_prob))
+# # removing stop words
+# print()
+# print('---- RM STOP WORDS ----')
+# word_prob = get_word_probability(RM_STOP_WORDS)
+
+# rm_stop_words_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, class_probability, word_prob, RM_STOP_WORDS))
+# print(rm_stop_words_precision)
+
+# rm_stop_words_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, class_probability, word_prob, RM_STOP_WORDS), c) for c in ck}
+# print(rm_stop_words_recall)
+
+# # with lemmatization of words
+# print()
+# print('---- LEMM WITH RM STOP WORDS ----')
+# word_prob = get_word_probability(LEMM_WITH_RM_STOPW)
+
 # lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
-#     test_set_dict, class_probability, word_prob, LEMMATIZATION))
+#     test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW))
 # print(lemm_with_rm_stopw_precision)
 
 # lemm_with_rm_stopw_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, class_probability, word_prob, LEMMATIZATION), c) for c in ck}
+#     test_set_dict, predict(test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
 # print(lemm_with_rm_stopw_recall)
