@@ -423,8 +423,8 @@ def predict_summarization_class(sentence, summarization_class_probability, sente
         summary_predict[k] = math.log(
             summarization_class_probability[k]) + log_likelihood
 
-    print('_____________________________')
-    print(sentence)
+    # print('_____________________________')
+    # print(sentence)
     return max(summary_predict.items(), key=operator.itemgetter(1))[0]
     # if c_MAP == 'summary':
 
@@ -447,10 +447,10 @@ scores = scorer.score(predictions, ref)
 print(scores)
 
 
-def predict(test_set_dict, summarization_class_probability, sentence_probability):
-    """Predict target values for test set.
+def predict_summ(test_set_dict, summarization_class_probability, sentence_probability):
+    """Predict summary text for every document in test set.
     :param test_set_dict: Test set dictionary.
-    :return: Predicted target values for test set .
+    :return: Predicted target values for test set.
     """
 
     predictions = defaultdict(dict)
@@ -468,3 +468,51 @@ def predict(test_set_dict, summarization_class_probability, sentence_probability
             predictions[key_class][key_doc] = result_text
 
     return predictions
+
+
+def get_rouge_n(test_set_dict, predictions):
+    """Get precision and recall in the context of ROUGE-N.
+    :param test_set_dict: The set of records to test the model with.
+    :param predictions: Predictions for the test set.
+    :return: The precision of the model.
+    """
+
+    rouge1_precision = 0
+    rouge2_precision = 0
+    rouge1_recall = 0
+    rouge2_recall = 0
+
+    total_predictions = 0
+
+    for key_class in test_set_dict:
+        for key_doc in test_set_dict[key_class]:
+            ref = test_set_dict[key_class][key_doc].summarised_doc
+            scorer = rouge_scorer.RougeScorer(
+                ['rouge1', 'rouge2'], use_stemmer=True)
+            scores = scorer.score(predictions[key_class][key_doc], ref)
+
+            rouge1_precision += scores['rouge1'][0]
+            rouge2_precision += scores['rouge2'][0]
+
+            rouge1_recall += scores['rouge1'][1]
+            rouge2_recall += scores['rouge2'][1]
+
+            total_predictions += 1
+
+            # print(scores)
+
+    mean_rouge1_precision = rouge1_precision / total_predictions
+    mean_rouge1_recall = rouge1_recall / total_predictions
+
+    mean_rouge2_precision = rouge2_precision / total_predictions
+    mean_rouge2_recall = rouge2_recall / total_predictions
+
+    print('Rouge1: ' + 'precision=' + str(mean_rouge1_precision) +
+          ', recall=' + str(mean_rouge1_recall))
+    print('Rouge2: ' + 'precision=' + str(mean_rouge2_precision) +
+          ' , recall=' + str(mean_rouge2_recall))
+
+
+p = predict_summ(test_set_dict, summarization_class_probability,
+                 sentence_probability)
+get_rouge_n(test_set_dict, p)
