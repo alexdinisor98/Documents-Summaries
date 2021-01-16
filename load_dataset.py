@@ -1,12 +1,14 @@
 import math
 import operator
 import os
+import re
 from collections import Counter, defaultdict
 
 import nltk
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
+from rouge_score import rouge_scorer
 
 RAW = 0
 RM_STOP_WORDS = 1
@@ -69,6 +71,8 @@ def get_final_dict(docs_dir, summaries_dir):
             word_tokens = word_tokenize(doc)
             word_tokens = [w.lower() for w in word_tokens]
 
+            sentecizer = sent_tokenize(doc)
+
             set_dict[key_class][key_doc] = DocumentProcessor(
                 orig_doc=doc,
                 word_tokenizer=word_tokens,
@@ -86,16 +90,14 @@ summaries_test_dir = 'Test Set/Summaries/'
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
 
-def get_sentecizer():
-    sentecizer = defaultdict(dict)
+def get_sentecizer(document_text):
+    abc = sent_tokenize(document_text)
+    try:
+        abc[0] = abc[0].split('\n\n')[1]
+    except IndexError:
+        abc[0] = abc[0]
 
-    for key_category in training_set_dict:
-        for key_doc in training_set_dict[key_category]:
-            article_doc = training_set_dict[key_category][key_doc].orig_doc
-
-            sentecizer[key_category][key_doc] = sent_tokenize(article_doc)
-
-    return sentecizer
+    return abc
 
 
 def remove_stop_words(document):
@@ -111,10 +113,10 @@ def remove_stop_words(document):
 
 # print(remove_stop_words(training_set_dict['business']['001.txt']))
 
-print('dim voc article -> ' +
-      str(len(training_set_dict['business']['001.txt'].word_tokenizer)))
-print('dim voc RM STOP WORDS article -> ' +
-      str(len(remove_stop_words(training_set_dict['business']['001.txt']))))
+# print('dim voc article -> ' +
+#       str(len(training_set_dict['business']['001.txt'].word_tokenizer)))
+# print('dim voc RM STOP WORDS article -> ' +
+#       str(len(remove_stop_words(training_set_dict['business']['001.txt']))))
 
 
 def get_wordnet_pos(word):
@@ -225,7 +227,7 @@ def predict_class(document, class_probability, word_probability, preprocessing_s
             except KeyError:
                 log_likelihood += 0
 
-        doc_predict_sum[c] = class_probability[c] + log_likelihood
+        doc_predict_sum[c] = math.log(class_probability[c]) + log_likelihood
 
     return max(doc_predict_sum.items(), key=operator.itemgetter(1))[0]
 
@@ -233,7 +235,7 @@ def predict_class(document, class_probability, word_probability, preprocessing_s
 def predict(test_set_dict, class_probability, word_probability, preprocessing_step):
     """Predict target values for test set.
     :param test_set_dict: Test set dictionary.
-    :return: Predicted target values for test set =.
+    :return: Predicted target values for test set.
     """
 
     predictions = defaultdict(dict)
@@ -283,11 +285,11 @@ def get_recall(test_set_dict, predictions, article_class):
     return num_correct_ck / float(num_documents_ck)
 
 
-word_probability = get_word_probability(RM_STOP_WORDS)
-print(predict_class(
-    training_set_dict['business']['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
-print(predict_class(training_set_dict['entertainment']
-                    ['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
+# word_probability = get_word_probability(RM_STOP_WORDS)
+# print(predict_class(
+#     training_set_dict['business']['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
+# print(predict_class(training_set_dict['entertainment']
+#                     ['001.txt'], class_probability, word_probability, RM_STOP_WORDS))
 
 # # raw
 # print('---- RAW ----')
@@ -302,16 +304,14 @@ print(predict_class(training_set_dict['entertainment']
 # print(raw_recall)
 
 # # removing stop words
-# print()
 # print('---- RM STOP WORDS ----')
-# word_prob = get_word_probability(RM_STOP_WORDS)
+# word_probability = get_word_probability(RM_STOP_WORDS)
 
 # rm_stop_words_precision = get_precision(test_set_dict, predict(
-#     test_set_dict, class_probability, word_prob, RM_STOP_WORDS))
+#     test_set_dict, class_probability, word_probability, RM_STOP_WORDS))
 # print(rm_stop_words_precision)
-
 # rm_stop_words_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, class_probability, word_prob, RM_STOP_WORDS), c) for c in ck}
+#     test_set_dict, predict(test_set_dict, class_probability, word_probability, RM_STOP_WORDS), c) for c in ck}
 # print(rm_stop_words_recall)
 
 # # with lemmatization of words
@@ -326,3 +326,145 @@ print(predict_class(training_set_dict['entertainment']
 # lemm_with_rm_stopw_recall = {c: get_recall(
 #     test_set_dict, predict(test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
 # print(lemm_with_rm_stopw_recall)
+
+
+# orig_document = get_sentecizer(
+#     training_set_dict['business']['001.txt'].orig_doc)
+# print(len(orig_document))
+# print('___________________')
+# my_text = training_set_dict['business']['001.txt'].summarised_doc
+# summarised_text = re.sub(r'\.(?=[^ \W\d])', '. ', my_text)
+# print(get_sentecizer(summarised_text))
+
+summarization_classes = ['summary', 'non-summary']
+
+
+def get_sentence_probability():
+    total_sentences_summary = 0
+    total_sentences_non_summary = 0
+    words_from_ck = defaultdict(list)
+    word_occ = defaultdict(dict)
+
+    total_words = []
+
+    for key_class in training_set_dict:
+        for key_doc in training_set_dict[key_class]:
+            orig_doc_sentenced = get_sentecizer(
+                training_set_dict[key_class][key_doc].orig_doc)
+
+            summary = training_set_dict[key_class][key_doc].summarised_doc
+            summarised_text = re.sub(r'\.(?=[^ \W\d])', '. ', summary)
+
+            total_words += training_set_dict[key_class][key_doc].word_tokenizer
+
+            for sentence in orig_doc_sentenced:
+                if sentence in summarised_text:
+                    total_sentences_summary += 1
+
+                    words_from_ck['summary'] += word_tokenize(sentence)
+                else:
+                    total_sentences_non_summary += 1
+                    words_from_ck['non-summary'] += word_tokenize(sentence)
+
+    print(total_sentences_summary)
+    print(total_sentences_non_summary)
+
+    for k in summarization_classes:
+        word_freq_ck = Counter(list(words_from_ck[k]))
+        for unique_w in word_freq_ck.keys():
+            word_occ[unique_w][k] = word_freq_ck[unique_w]
+
+    total_words = list(set(total_words))
+    vocabulary_dim = len(total_words)
+
+    for w in total_words:
+        for k in summarization_classes:
+            try:
+                x = word_occ[w][k]
+            except KeyError:
+                word_occ[w][k] = 0
+
+    sentence_probability = defaultdict(dict)
+    alpha = 1
+
+    for unique_w in word_occ:
+        for k in word_occ[unique_w]:
+            sentence_probability[unique_w][k] = (
+                word_occ[unique_w][k] + alpha) / (len(words_from_ck[k]) + vocabulary_dim + alpha)
+
+    total_sentences = total_sentences_summary + total_sentences_non_summary
+    summarization_class_probability = {}
+    summarization_class_probability['summary'] = total_sentences_summary / \
+        total_sentences
+    summarization_class_probability['non-summary'] = total_sentences_non_summary / \
+        total_sentences
+
+    return (summarization_class_probability, sentence_probability)
+
+
+def predict_summarization_class(sentence, summarization_class_probability, sentence_probability):
+    """Predict if the sentence is summary or non-summary.
+
+    Maximizes the log likelihood to prevent underflow.
+
+    :param document: Document to predict a class for.
+    :return: The predicted class.
+    """
+    summary_predict = defaultdict(dict)
+
+    for k in summarization_classes:
+        log_likelihood = 0
+        for w in list(set(word_tokenize(sentence))):
+            try:
+                log_likelihood += math.log(sentence_probability[w][k])
+            except KeyError:
+                log_likelihood += 0
+
+        summary_predict[k] = math.log(
+            summarization_class_probability[k]) + log_likelihood
+
+    print('_____________________________')
+    print(sentence)
+    return max(summary_predict.items(), key=operator.itemgetter(1))[0]
+    # if c_MAP == 'summary':
+
+
+(summarization_class_probability, sentence_probability) = get_sentence_probability()
+
+sentenced_document = get_sentecizer(
+    training_set_dict['business']['001.txt'].orig_doc)
+
+predictions = ''
+for s in sentenced_document:
+    if predict_summarization_class(
+            s, summarization_class_probability, sentence_probability) == 'summary':
+        predictions += s
+
+print(predictions)
+ref = training_set_dict['business']['001.txt'].summarised_doc
+scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2'], use_stemmer=True)
+scores = scorer.score(predictions, ref)
+print(scores)
+
+
+def predict(test_set_dict, summarization_class_probability, sentence_probability):
+    """Predict target values for test set.
+    :param test_set_dict: Test set dictionary.
+    :return: Predicted target values for test set .
+    """
+
+    predictions = defaultdict(dict)
+    for key_class in test_set_dict:
+        for key_doc in test_set_dict[key_class]:
+            sentenced_doc = get_sentecizer(
+                test_set_dict[key_class][key_doc].orig_doc)
+
+            result_text = ''
+            for s in sentenced_doc:
+                if predict_summarization_class(
+                        s, summarization_class_probability, sentence_probability) == 'summary':
+                    result_text += s
+
+            predictions[key_class][key_doc] = result_text
+
+    return predictions
