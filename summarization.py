@@ -17,9 +17,21 @@ from load_dataset import get_final_dict, get_sentecizer
 summarization_classes = ['summary', 'non-summary']
 
 
-def get_sentence_probability(training_set_dict):
+def get_probabilities(training_set_dict):
+    """"Get the prior probability (summary or non-summary) for sentences
+    And the likelihood which is the word occurence in a summary sentence.
+
+    Applies Laplace smoothing to solve the zero observations problem.
+
+    :param training_set_dict: Dictionary of the training set.
+    :param preprocessing_step: Text preprocessing step.
+    :return: Tuple of prior probability and likelihood.
+    """
+
     total_sentences_summary = 0
     total_sentences_non_summary = 0
+
+    # dictionary of words found in summaries or non-summary sentence.
     words_from_ck = defaultdict(list)
     word_occ = defaultdict(dict)
 
@@ -30,6 +42,7 @@ def get_sentence_probability(training_set_dict):
             orig_doc_sentenced = get_sentecizer(
                 training_set_dict[key_class][key_doc].orig_doc)
 
+            # add space after full stop in summary text
             summary = training_set_dict[key_class][key_doc].summarised_doc
             summarised_text = re.sub(r'\.(?=[^ \W\d])', '. ', summary)
 
@@ -71,22 +84,26 @@ def get_sentence_probability(training_set_dict):
                 word_occ[unique_w][k] + alpha) / (len(words_from_ck[k]) + vocabulary_dim + alpha)
 
     total_sentences = total_sentences_summary + total_sentences_non_summary
-    summarization_class_probability = {}
-    summarization_class_probability['summary'] = total_sentences_summary / \
+    prior_probability = {}
+    prior_probability['summary'] = total_sentences_summary / \
         total_sentences
-    summarization_class_probability['non-summary'] = total_sentences_non_summary / \
+    prior_probability['non-summary'] = total_sentences_non_summary / \
         total_sentences
 
-    return (summarization_class_probability, sentence_probability)
+    return (prior_probability, sentence_probability)
 
 
-def predict_summarization_class(sentence, summarization_class_probability, sentence_probability):
-    """Predict if the sentence is summary or non-summary.
+def predict_summarization_class(sentence, prior_probability, sentence_probability):
+    """Predict if the sentence is from summary or non-summary.
+    Uses the maximum a posteriori (MAP) estimation.
 
     Maximizes the log likelihood to prevent underflow.
 
-    :param document: Document to predict a class for.
-    :return: The predicted class.
+    :param sentence: Sentence to predict if it is from summary or not.
+    :param prior_probability: The prior probability.
+    :param sentence_probability: The likelihood.
+
+    :return: The predicted class of the sentence (belongs to summary or not).
     """
     summary_predict = defaultdict(dict)
 
@@ -99,14 +116,17 @@ def predict_summarization_class(sentence, summarization_class_probability, sente
                 log_likelihood += 0
 
         summary_predict[k] = math.log(
-            summarization_class_probability[k]) + log_likelihood
+            prior_probability[k]) + log_likelihood
 
     return max(summary_predict.items(), key=operator.itemgetter(1))[0]
 
 
-def predict(test_set_dict, summarization_class_probability, sentence_probability):
+def predict(test_set_dict, prior_probability, sentence_probability):
     """Predict summary text for every document in test set.
+
     :param test_set_dict: Test set dictionary.
+    :param prior_probability: The prior probability.
+    :param sentence_probability: The likelihood.
     :return: Predicted target values for test set.
     """
 
@@ -119,7 +139,7 @@ def predict(test_set_dict, summarization_class_probability, sentence_probability
             result_text = ''
             for s in sentenced_doc:
                 if predict_summarization_class(
-                        s, summarization_class_probability, sentence_probability) == 'summary':
+                        s, prior_probability, sentence_probability) == 'summary':
                     result_text += s
 
             predictions[key_class][key_doc] = result_text
@@ -128,10 +148,11 @@ def predict(test_set_dict, summarization_class_probability, sentence_probability
 
 
 def get_rouge_n(test_set_dict, predictions):
-    """Get precision and recall in the context of ROUGE-N.
+    """Get precision and recall for summarization in the context of ROUGE-1 and ROUGE-2.
+
     :param test_set_dict: The set of records to test the model with.
-    :param predictions: Predictions for the test set.
-    :return: The precision of the model.
+    :param predictions: Summaries predictions for the test set.
+    :return: The precision and recall of the model with unigrams and bigrams.
     """
 
     rouge1_precision = 0
@@ -172,7 +193,7 @@ training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
 (summarization_class_probability,
- sentence_probability) = get_sentence_probability(training_set_dict)
+ sentence_probability) = get_probabilities(training_set_dict)
 
 predictions = predict(test_set_dict, summarization_class_probability,
                       sentence_probability)

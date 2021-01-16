@@ -8,20 +8,32 @@ import nltk
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
-from rouge_score import rouge_scorer
 
 from constants import LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW, RM_STOP_WORDS
 
 
 class DocumentProcessor(object):
+    """The features of the document.
+    """
+
     def __init__(self, orig_doc=None, word_tokenizer=None, summarised_doc=None):
+        """Create a document with tokenization and attached summary.
+
+        :param orig_doc: The original document text.
+        :param word_tokenizer: The word tokenization of document.
+        :param summarised_doc: The related summary of the document.
+        """
         self.orig_doc = orig_doc
         self.word_tokenizer = word_tokenizer
         self.summarised_doc = summarised_doc
 
 
 def get_documents_dict(articles_dir):
+    """Read from directory and get dictionary with documents in categories.
 
+    :param articles_dir: Path to articles directory.
+    :return: Dictionary of documents.
+    """
     documents_dict_data = defaultdict(dict)
 
     for d in os.scandir(articles_dir):
@@ -37,7 +49,11 @@ def get_documents_dict(articles_dir):
 
 
 def get_summaries_dict(summaries_dir):
+    """Read from directory and get dictionary with summaries in categories.
 
+    :param summaries_dir: Path to summaries directory.
+    :return: Dictionary of summaries.
+    """
     summaries_dict_data = defaultdict(dict)
 
     for d in os.scandir(summaries_dir):
@@ -53,6 +69,12 @@ def get_summaries_dict(summaries_dir):
 
 
 def get_final_dict(docs_dir, summaries_dir):
+    """Get dictionary with documents and related summaries as dataset.
+
+    :param docs_dir: Path to documents directory.
+    :param summaries_dir: Path to summaries directory.
+    :return: Dictionary of final dataset.
+    """
     set_dict = defaultdict(dict)
 
     docs_dict = get_documents_dict(docs_dir)
@@ -76,17 +98,33 @@ def get_final_dict(docs_dir, summaries_dir):
 
 
 def get_sentecizer(document_text):
-    abc = sent_tokenize(document_text)
-    try:
-        abc[0] = abc[0].split('\n\n')[1]
-    except IndexError:
-        abc[0] = abc[0]
+    """Tokenizing sentences.
+    Consider article text with no full stop after title description, 
+    which needs to be removed to take the first sentence after it.
 
-    return abc
+    Example:
+    'High fuel prices hit BA's profits
+
+    British Airways has blamed high fuel prices for a 40% drop in profits.'
+
+    :param document_text: Text of original document.
+    :return: The sentecizer of the document.
+    """
+    sentecizer = sent_tokenize(document_text)
+    try:
+        sentecizer[0] = sentecizer[0].split('\n\n')[1]
+    except IndexError:
+        sentecizer[0] = sentecizer[0]
+
+    return sentecizer
 
 
 def remove_stop_words(document):
+    """Remove stop words from a document.
+    :param document: The document
 
+    :return: List of words after removal of stop words.
+    """
     stop_words = []
     with open("stop_words") as fp:
         lines = fp.readlines()
@@ -108,6 +146,11 @@ def get_wordnet_pos(word):
 
 
 def get_lemmatizer(document_tokenized):
+    """Perform word lemmatization.
+    :param document_tokenized: Document tokenized in words.
+
+    :return: List of words after lemmatization.
+    """
     lemmatizer = WordNetLemmatizer()
     document_tokenized = [w.lower() for w in document_tokenized]
     return [lemmatizer.lemmatize(w, get_wordnet_pos(w))

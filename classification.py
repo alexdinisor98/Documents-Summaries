@@ -17,12 +17,26 @@ from load_dataset import (get_final_dict, get_lemmatizer, get_sentecizer,
 ck = ['business', 'entertainment', 'politics', 'sport', 'tech']
 
 
-def get_class_probability(training_set_dict):
+def get_prior_probability(training_set_dict):
+    """Get the prior probability of class.
+
+    :param training_set_dict: Dictionary of the training set.
+    :return: The prior probability.
+    """
     total_docs = sum(len(training_set_dict[k]) for k in ck)
     return {k: len(training_set_dict[k]) / total_docs for k in ck}
 
 
-def get_word_probability(preprocessing_step):
+def get_word_probability(training_set_dict, preprocessing_step):
+    """Get the likelihood which is the word occurence probability in a document.
+
+    Applies Laplace smoothing to solve the zero observations problem.
+
+    :param training_set_dict: Dictionary of the training set.
+    :param preprocessing_step: Text preprocessing step.
+    :return: The likelihood probability of every word.
+    """
+
     word_probability = defaultdict(dict)
 
     alpha = 1
@@ -60,7 +74,7 @@ def get_word_probability(preprocessing_step):
     # for c in ck:
     #     total_words_ck[c] = list(set(total_words_ck[c]))
 
-    # solving KeyError for certain words in certain classes
+    # solving KeyError for certain words which do not appear in some classes
     for w in total_words:
         for c in ck:
             try:
@@ -68,6 +82,7 @@ def get_word_probability(preprocessing_step):
             except KeyError:
                 word_occurence[w][c] = 0
 
+    # compute probability for each word
     for unique_w in word_occurence:
         for c in word_occurence[unique_w]:
             word_probability[unique_w][c] = (
@@ -76,12 +91,16 @@ def get_word_probability(preprocessing_step):
     return word_probability
 
 
-def predict_class(document, class_probability, word_probability, preprocessing_step):
+def predict_class(document, prior_probability, word_probability, preprocessing_step):
     """Predict the class for the document.
+    Uses the maximum a posteriori (MAP) estimation.
 
-    Maximizes the log likelihood to prevent underflow.
+    Maximizes the log likelihood to prevent Underflow.
 
     :param document: Document to predict a class for.
+    :param prior_probability: The prior probability.
+    :param word_probability: The likelihood.
+    :param preprocessing_step: Text preprocessing step.
     :return: The predicted class.
     """
 
@@ -103,14 +122,18 @@ def predict_class(document, class_probability, word_probability, preprocessing_s
             except KeyError:
                 log_likelihood += 0
 
-        doc_predict_sum[c] = math.log(class_probability[c]) + log_likelihood
+        doc_predict_sum[c] = math.log(prior_probability[c]) + log_likelihood
 
     return max(doc_predict_sum.items(), key=operator.itemgetter(1))[0]
 
 
-def predict(test_set_dict, class_probability, word_probability, preprocessing_step):
-    """Predict target values for test set.
+def predict(test_set_dict, prior_probability, word_probability, preprocessing_step):
+    """Predict target class for documents in test set.
+
     :param test_set_dict: Test set dictionary.
+    :param prior_probability: The prior probability.
+    :param word_probability: The likelihood.
+    :param preprocessing_step: Text preprocessing step.
     :return: Predicted target values for test set.
     """
 
@@ -118,7 +141,7 @@ def predict(test_set_dict, class_probability, word_probability, preprocessing_st
     for key_class in test_set_dict:
         for key_doc in test_set_dict[key_class]:
             result = predict_class(
-                test_set_dict[key_class][key_doc], class_probability, word_probability, preprocessing_step)
+                test_set_dict[key_class][key_doc], prior_probability, word_probability, preprocessing_step)
             predictions[key_class][key_doc] = result
 
     return predictions
@@ -126,6 +149,7 @@ def predict(test_set_dict, class_probability, word_probability, preprocessing_st
 
 def get_precision(test_set_dict, predictions):
     """Get precision of predictions on test set.
+
     :param test_set_dict: The set of records to test the model with.
     :param predictions: Predictions for the test set.
     :return: The precision of the model.
@@ -143,15 +167,15 @@ def get_precision(test_set_dict, predictions):
 
 
 def get_recall(test_set_dict, predictions, article_class):
-    """Get recall of predictions on test set .
+    """Get recall of predictions on test set.
+
     :param test_set_dict: The set of records to test the model with.
     :param predictions: Predictions for the test set.
-    :param article_class: Class ck.
+    :param article_class: Class ck (news category).
     :return: The recall of the class model.
     """
 
     num_correct_ck = 0
-
     num_documents_ck = len(test_set_dict[article_class].values())
 
     for key_doc in test_set_dict[article_class]:
@@ -164,34 +188,34 @@ def get_recall(test_set_dict, predictions, article_class):
 training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
-class_probability = get_class_probability(training_set_dict)
+prior_probability = get_prior_probability(training_set_dict)
 # raw
 print('---- RAW ----')
-word_probability = get_word_probability(RAW)
+word_probability = get_word_probability(training_set_dict, RAW)
 
 raw_precision = get_precision(test_set_dict, predict(
-    test_set_dict, class_probability, word_probability, RAW))
+    test_set_dict, prior_probability, word_probability, RAW))
 print(raw_precision)
 
 raw_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, class_probability, word_probability, RAW), c) for c in ck}
+    test_set_dict, predict(test_set_dict, prior_probability, word_probability, RAW), c) for c in ck}
 print(raw_recall)
 
 # removing stop words
 print('---- RM STOP WORDS ----')
-word_probability = get_word_probability(RM_STOP_WORDS)
+word_probability = get_word_probability(training_set_dict, RM_STOP_WORDS)
 
 rm_stop_words_precision = get_precision(test_set_dict, predict(
-    test_set_dict, class_probability, word_probability, RM_STOP_WORDS))
+    test_set_dict, prior_probability, word_probability, RM_STOP_WORDS))
 print(rm_stop_words_precision)
 rm_stop_words_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, class_probability, word_probability, RM_STOP_WORDS), c) for c in ck}
+    test_set_dict, predict(test_set_dict, prior_probability, word_probability, RM_STOP_WORDS), c) for c in ck}
 print(rm_stop_words_recall)
 
 # # with lemmatization of words
 # print()
 # print('---- LEMM WITH RM STOP WORDS ----')
-# word_prob = get_word_probability(LEMM_WITH_RM_STOPW)
+# word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
 
 # lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
 #     test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW))
