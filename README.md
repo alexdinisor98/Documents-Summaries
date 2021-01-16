@@ -7,8 +7,10 @@ from 5 categories (business, entertainment, politics, sport, tech).
 Combines some Text Preprocessing Techniques using nltk: Word and Sentence Tokenization, Removing Stop Words and Lemmatization of Words. 
 
 Uses the Maximum a posteriori (MAP) estimation.
-Maximizes the log likelihood to prevent Underflow,
-and applies Laplace Smoothing to solve the Zero Observations Problem.
+
+Maximizes the log likelihood to prevent Underflow.
+
+Applies Laplace Smoothing to solve the Zero Observations Problem.
 
 * News Classifier.
 
