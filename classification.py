@@ -50,7 +50,8 @@ def get_word_probability(training_set_dict, preprocessing_step):
         for key_doc in training_set_dict[key_class]:
 
             if preprocessing_step == RM_STOP_WORDS:
-                doc = remove_stop_words(training_set_dict[key_class][key_doc])
+                doc = remove_stop_words(
+                    training_set_dict[key_class][key_doc].word_tokenizer)
             elif preprocessing_step == LEMMATIZATION:
                 doc = get_lemmatizer(
                     training_set_dict[key_class][key_doc].word_tokenizer)
@@ -105,7 +106,7 @@ def predict_class(document, prior_probability, word_probability, preprocessing_s
     """
 
     if preprocessing_step == RM_STOP_WORDS:
-        doc = remove_stop_words(document)
+        doc = remove_stop_words(document.word_tokenizer)
     elif preprocessing_step == LEMMATIZATION:
         doc = get_lemmatizer(document.word_tokenizer)
     elif preprocessing_step == LEMM_WITH_RM_STOPW:

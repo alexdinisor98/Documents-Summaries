@@ -108,7 +108,7 @@ def get_sentecizer(document_text):
     British Airways has blamed high fuel prices for a 40% drop in profits.'
 
     :param document_text: Text of original document.
-    :return: The sentecizer of the document.
+    :return: List of sentences from the document.
     """
     sentecizer = sent_tokenize(document_text)
     try:
@@ -119,9 +119,9 @@ def get_sentecizer(document_text):
     return sentecizer
 
 
-def remove_stop_words(document):
+def remove_stop_words(document_tokenized):
     """Remove stop words from a document.
-    :param document: The document
+    :param document: Document tokenized in words.
 
     :return: List of words after removal of stop words.
     """
@@ -130,8 +130,8 @@ def remove_stop_words(document):
         lines = fp.readlines()
         stop_words = [l.strip() for l in lines]
 
-    document_tokenized = [w.lower() for w in document.word_tokenizer]
-    return [w for w in document.word_tokenizer if not w in stop_words]
+    document_tokenized = [w.lower() for w in document_tokenized]
+    return [w for w in document_tokenized if not w in stop_words]
 
 
 def get_wordnet_pos(word):

@@ -13,12 +13,13 @@ from constants import (BIGRAMS, LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW,
                        RM_STOP_WORDS, UNIGRAMS, docs_test_dir,
                        docs_training_dir, summaries_test_dir,
                        summaries_training_dir)
-from load_dataset import get_final_dict, get_sentecizer
+from load_dataset import (get_final_dict, get_lemmatizer, get_sentecizer,
+                          remove_stop_words)
 
 summarization_classes = ['summary', 'non-summary']
 
 
-def get_probabilities(training_set_dict, N_GRAMS):
+def get_probabilities(training_set_dict, preprocessing_step, N_GRAMS):
     """"Get the prior probability (summary or non-summary) for sentences
     And the likelihood which is the word occurence in a summary sentence.
 
@@ -42,15 +43,19 @@ def get_probabilities(training_set_dict, N_GRAMS):
 
     for key_class in training_set_dict:
         for key_doc in training_set_dict[key_class]:
-            orig_doc_sentenced = get_sentecizer(
+            sentenced_orig_doc = get_sentecizer(
                 training_set_dict[key_class][key_doc].orig_doc)
 
             # add space after full stop in summary text
             summary = training_set_dict[key_class][key_doc].summarised_doc
             summarised_text = re.sub(r'\.(?=[^ \W\d])', '. ', summary)
 
-            for sentence in orig_doc_sentenced:
-                word_tk = word_tokenize(sentence)
+            for sentence in sentenced_orig_doc:
+                if preprocessing_step == RM_STOP_WORDS:
+                    word_tk = remove_stop_words(word_tokenize(sentence))
+                else:
+                    word_tk = word_tokenize(sentence)
+
                 total_words += word_tk
                 if N_GRAMS == 2:
                     bigrams_sentence = []
@@ -110,7 +115,7 @@ def get_probabilities(training_set_dict, N_GRAMS):
     return (prior_probability, sentence_probability)
 
 
-def predict_summarization_class(sentence, prior_probability, sentence_probability, N_GRAMS):
+def predict_summarization_class(sentence, prior_probability, sentence_probability, preprocessing_step, N_GRAMS):
     """Predict if the sentence is from summary or non-summary.
     Uses the maximum a posteriori (MAP) estimation.
 
@@ -119,6 +124,7 @@ def predict_summarization_class(sentence, prior_probability, sentence_probabilit
     :param sentence: Sentence to predict if it is from summary or not.
     :param prior_probability: The prior probability.
     :param sentence_probability: The likelihood.
+    :param preprocessing_step: Text preprocessing step.
     :paran N_GRAMS: Unigrams or Bigrams
 
     :return: The predicted class of the sentence (belongs to summary or not).
@@ -132,7 +138,10 @@ def predict_summarization_class(sentence, prior_probability, sentence_probabilit
             seq = ' '.join(word_tokens[i: i + 2])
             ngrams_sentence.append(seq)
     else:
-        ngrams_sentence = word_tokens
+        if preprocessing_step == RM_STOP_WORDS:
+            ngrams_sentence = remove_stop_words(word_tokens)
+        else:
+            ngrams_sentence = word_tokens
 
     for k in summarization_classes:
         log_likelihood = 0
@@ -148,12 +157,13 @@ def predict_summarization_class(sentence, prior_probability, sentence_probabilit
     return max(summary_predict.items(), key=operator.itemgetter(1))[0]
 
 
-def predict(test_set_dict, prior_probability, sentence_probability, N_GRAMS):
+def predict(test_set_dict, prior_probability, sentence_probability, preprocessing_step, N_GRAMS):
     """Predict summary text for every document in test set.
 
     :param test_set_dict: Test set dictionary.
     :param prior_probability: The prior probability.
     :param sentence_probability: The likelihood.
+    :param preprocessing_step: Text preprocessing step.
     :paran N_GRAMS: Unigrams or Bigrams
     :return: Predicted target values for test set.
     """
@@ -167,7 +177,7 @@ def predict(test_set_dict, prior_probability, sentence_probability, N_GRAMS):
             result_text = ''
             for s in sentenced_doc:
                 if predict_summarization_class(
-                        s, prior_probability, sentence_probability, N_GRAMS) == 'summary':
+                        s, prior_probability, sentence_probability, preprocessing_step, N_GRAMS) == 'summary':
                     result_text += s
 
             predictions[key_class][key_doc] = result_text
@@ -223,31 +233,16 @@ training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
 (summarization_class_probability,
- sentence_probability) = get_probabilities(training_set_dict, UNIGRAMS)
+ sentence_probability) = get_probabilities(training_set_dict, RAW, UNIGRAMS)
 
 predictions = predict(test_set_dict, summarization_class_probability,
-                      sentence_probability, UNIGRAMS)
+                      sentence_probability, RAW, UNIGRAMS)
 get_rouge_n(test_set_dict, predictions, UNIGRAMS)
-
-# sentenced_document = get_sentecizer(
-#     training_set_dict['business']['001.txt'].orig_doc)
-
-# predictions = ''
-# for s in sentenced_document:
-#     if predict_summarization_class(
-#             s, summarization_class_probability, sentence_probability) == 'summary':
-#         predictions += s
-
-# print(predictions)
-# ref = training_set_dict['business']['001.txt'].summarised_doc
-# scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2'], use_stemmer=True)
-# scores = scorer.score(predictions, ref)
-# print(scores)
 
 
 (summarization_class_probability,
- sentence_probability) = get_probabilities(training_set_dict, BIGRAMS)
+ sentence_probability) = get_probabilities(training_set_dict, RAW, BIGRAMS)
 
 predictions = predict(test_set_dict, summarization_class_probability,
-                      sentence_probability, BIGRAMS)
-get_rouge_n(test_set_dict, predictions, BIGRAMS)
+                      sentence_probability, RAW, BIGRAMS)
+get_rouge_n(test_set_dict, predictions,  BIGRAMS)
