@@ -6,3 +6,5 @@ docs_test_dir = 'Test Set/News Articles/'
 summaries_test_dir = 'Test Set/Summaries/'
 docs_training_dir = 'Training Set/News Articles/'
 summaries_training_dir = 'Training Set/Summaries/'
+UNIGRAMS = 1
+BIGRAMS = 2

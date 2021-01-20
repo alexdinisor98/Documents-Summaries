@@ -18,5 +18,5 @@ Performance evaluation by computing Precision and Recall of the model.
 
 * Extractive Summarization.
 
-Performance evaluation by computing Precision and Recall in the Context of ROUGE-N to measure unigrams (ROUGE-1) and bigrams (ROUGE-2).
+Performance evaluation by computing Precision and Recall in the Context of ROUGE-N (Words N-Grams Model) to measure unigrams (ROUGE-1) and bigrams (ROUGE-2).
 
