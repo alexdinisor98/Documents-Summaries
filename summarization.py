@@ -53,11 +53,16 @@ def get_probabilities(training_set_dict, preprocessing_step, N_GRAMS):
             for sentence in sentenced_orig_doc:
                 if preprocessing_step == RM_STOP_WORDS:
                     word_tk = remove_stop_words(word_tokenize(sentence))
+                elif preprocessing_step == LEMMATIZATION:
+                    word_tk = get_lemmatizer(word_tokenize(sentence))
+                elif preprocessing_step == LEMM_WITH_RM_STOPW:
+                    word_tk = get_lemmatizer(
+                        remove_stop_words(word_tokenize(sentence)))
                 else:
                     word_tk = word_tokenize(sentence)
 
                 total_words += word_tk
-                if N_GRAMS == 2:
+                if N_GRAMS == BIGRAMS:
                     bigrams_sentence = []
                     for i in range(len(word_tk) - 2):
                         seq = ' '.join(word_tk[i: i + 2])
@@ -69,13 +74,13 @@ def get_probabilities(training_set_dict, preprocessing_step, N_GRAMS):
 
                 if sentence in summarised_text:
                     total_sentences_summary += 1
-                    if N_GRAMS == 2:
+                    if N_GRAMS == BIGRAMS:
                         ngrams_from_ck['summary'] += bigrams_sentence
                     else:
                         ngrams_from_ck['summary'] += word_tk
                 else:
                     total_sentences_non_summary += 1
-                    if N_GRAMS == 2:
+                    if N_GRAMS == BIGRAMS:
                         ngrams_from_ck['non-summary'] += bigrams_sentence
                     else:
                         ngrams_from_ck['non-summary'] += word_tk
@@ -130,18 +135,24 @@ def predict_summarization_class(sentence, prior_probability, sentence_probabilit
     :return: The predicted class of the sentence (belongs to summary or not).
     """
     summary_predict = defaultdict(dict)
-    word_tokens = word_tokenize(sentence)
     ngrams_sentence = []
 
-    if N_GRAMS == 2:
+    if preprocessing_step == RM_STOP_WORDS:
+        word_tokens = remove_stop_words(word_tokenize(sentence))
+    elif preprocessing_step == LEMMATIZATION:
+        word_tokens = get_lemmatizer(word_tokenize(sentence))
+    elif preprocessing_step == LEMM_WITH_RM_STOPW:
+        word_tokens = get_lemmatizer(
+            remove_stop_words(word_tokenize(sentence)))
+    else:
+        word_tokens = word_tokenize(sentence)
+
+    if N_GRAMS == BIGRAMS:
         for i in range(len(word_tokens) - 2):
             seq = ' '.join(word_tokens[i: i + 2])
             ngrams_sentence.append(seq)
     else:
-        if preprocessing_step == RM_STOP_WORDS:
-            ngrams_sentence = remove_stop_words(word_tokens)
-        else:
-            ngrams_sentence = word_tokens
+        ngrams_sentence = word_tokens
 
     for k in summarization_classes:
         log_likelihood = 0
@@ -208,7 +219,7 @@ def get_rouge_n(test_set_dict, predictions, N_GRAMS):
                 ['rouge1', 'rouge2'], use_stemmer=True)
             scores = scorer.score(predictions[key_class][key_doc], ref)
 
-            if N_GRAMS == 2:
+            if N_GRAMS == BIGRAMS:
                 rouge2_precision += scores['rouge2'][0]
                 rouge2_recall += scores['rouge2'][1]
             else:
@@ -217,21 +228,22 @@ def get_rouge_n(test_set_dict, predictions, N_GRAMS):
 
             total_predictions += 1
 
-    if N_GRAMS == 1:
-        mean_rouge1_precision = rouge1_precision / total_predictions
-        mean_rouge1_recall = rouge1_recall / total_predictions
-        print('Rouge1: ' + 'precision=' + str(mean_rouge1_precision) +
-              ', recall=' + str(mean_rouge1_recall))
-    else:
+    if N_GRAMS == BIGRAMS:
         mean_rouge2_precision = rouge2_precision / total_predictions
         mean_rouge2_recall = rouge2_recall / total_predictions
         print('Rouge2: ' + 'precision=' + str(mean_rouge2_precision) +
               ' , recall=' + str(mean_rouge2_recall))
+    else:
+        mean_rouge1_precision = rouge1_precision / total_predictions
+        mean_rouge1_recall = rouge1_recall / total_predictions
+        print('Rouge1: ' + 'precision=' + str(mean_rouge1_precision) +
+              ', recall=' + str(mean_rouge1_recall))
 
 
 training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
+# change last 2 params for different preprocessing steps and N-grams
 (summarization_class_probability,
  sentence_probability) = get_probabilities(training_set_dict, RAW, UNIGRAMS)
 

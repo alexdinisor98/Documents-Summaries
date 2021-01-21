@@ -57,7 +57,7 @@ def get_word_probability(training_set_dict, preprocessing_step):
                     training_set_dict[key_class][key_doc].word_tokenizer)
             elif preprocessing_step == LEMM_WITH_RM_STOPW:
                 doc = get_lemmatizer(remove_stop_words(
-                    training_set_dict[key_class][key_doc]))
+                    training_set_dict[key_class][key_doc].word_tokenizer))
             else:
                 doc = training_set_dict[key_class][key_doc].word_tokenizer
 
@@ -68,12 +68,8 @@ def get_word_probability(training_set_dict, preprocessing_step):
         for unique_w in word_freq_ck.keys():
             word_occurence[unique_w][key_class] = word_freq_ck[unique_w]
 
-    print(len(total_words))
     total_words = list(set(total_words))
     vocabulary_dim = len(total_words)
-    print('VOCABULARY DIM: ' + str(vocabulary_dim))
-    # for c in ck:
-    #     total_words_ck[c] = list(set(total_words_ck[c]))
 
     # solving KeyError for certain words which do not appear in some classes
     for w in total_words:
@@ -110,7 +106,7 @@ def predict_class(document, prior_probability, word_probability, preprocessing_s
     elif preprocessing_step == LEMMATIZATION:
         doc = get_lemmatizer(document.word_tokenizer)
     elif preprocessing_step == LEMM_WITH_RM_STOPW:
-        doc = get_lemmatizer(remove_stop_words(document))
+        doc = get_lemmatizer(remove_stop_words(document.word_tokenizer))
     else:
         doc = document.word_tokenizer
 
@@ -190,6 +186,7 @@ training_set_dict = get_final_dict(docs_training_dir, summaries_training_dir)
 test_set_dict = get_final_dict(docs_test_dir, summaries_test_dir)
 
 prior_probability = get_prior_probability(training_set_dict)
+
 # raw
 print('---- RAW ----')
 word_probability = get_word_probability(training_set_dict, RAW)
@@ -203,25 +200,40 @@ raw_recall = {c: get_recall(
 print(raw_recall)
 
 # removing stop words
-print('---- RM STOP WORDS ----')
-word_probability = get_word_probability(training_set_dict, RM_STOP_WORDS)
+# print('---- RM STOP WORDS ----')
+# word_probability = get_word_probability(training_set_dict, RM_STOP_WORDS)
 
-rm_stop_words_precision = get_precision(test_set_dict, predict(
-    test_set_dict, prior_probability, word_probability, RM_STOP_WORDS))
-print(rm_stop_words_precision)
-rm_stop_words_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, prior_probability, word_probability, RM_STOP_WORDS), c) for c in ck}
-print(rm_stop_words_recall)
+# rm_stop_words_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, prior_probability, word_probability, RM_STOP_WORDS))
+# print(rm_stop_words_precision)
+# rm_stop_words_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, prior_probability, word_probability, RM_STOP_WORDS), c) for c in ck}
+# print(rm_stop_words_recall)
+
 
 # # with lemmatization of words
+# print()
+# print('---- LEMMATIZATION ----')
+# word_prob = get_word_probability(training_set_dict, LEMMATIZATION)
+
+# lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, prior_probability, word_prob, LEMMATIZATION))
+# print(lemm_with_rm_stopw_precision)
+
+# lemm_with_rm_stopw_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMMATIZATION), c) for c in ck}
+# print(lemm_with_rm_stopw_recall)
+
+
+# # with lemmatization of words with stop words removal
 # print()
 # print('---- LEMM WITH RM STOP WORDS ----')
 # word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
 
 # lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
-#     test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW))
+#     test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW))
 # print(lemm_with_rm_stopw_precision)
 
 # lemm_with_rm_stopw_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, class_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
+#     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
 # print(lemm_with_rm_stopw_recall)
