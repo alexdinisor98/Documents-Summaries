@@ -9,12 +9,12 @@ from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
 from rouge_score import rouge_scorer
 
-from constants import (BIGRAMS, LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW,
-                       RM_STOP_WORDS, UNIGRAMS, docs_test_dir,
-                       docs_training_dir, summaries_test_dir,
-                       summaries_training_dir)
 from load_dataset import (get_final_dict, get_lemmatizer, get_sentecizer,
                           remove_stop_words)
+from my_constants import (BIGRAMS, LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW,
+                          RM_STOP_WORDS, UNIGRAMS, docs_test_dir,
+                          docs_training_dir, summaries_test_dir,
+                          summaries_training_dir)
 
 summarization_classes = ['summary', 'non-summary']
 

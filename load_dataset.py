@@ -9,7 +9,7 @@ from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
 
-from constants import LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW, RM_STOP_WORDS
+from my_constants import LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW, RM_STOP_WORDS
 
 
 class DocumentProcessor(object):

@@ -7,12 +7,13 @@ import nltk
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import sent_tokenize, word_tokenize
+from sklearn import metrics
 
-from constants import (LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW, RM_STOP_WORDS,
-                       docs_test_dir, docs_training_dir, summaries_test_dir,
-                       summaries_training_dir)
 from load_dataset import (get_final_dict, get_lemmatizer, get_sentecizer,
                           remove_stop_words)
+from my_constants import (LEMM_WITH_RM_STOPW, LEMMATIZATION, RAW,
+                          RM_STOP_WORDS, docs_test_dir, docs_training_dir,
+                          summaries_test_dir, summaries_training_dir)
 
 ck = ['business', 'entertainment', 'politics', 'sport', 'tech']
 
@@ -237,3 +238,16 @@ print(raw_recall)
 # lemm_with_rm_stopw_recall = {c: get_recall(
 #     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
 # print(lemm_with_rm_stopw_recall)
+
+# # Predicted values
+# y_pred_business = predict(test_set_dict, prior_probability,
+#                           word_probability, RAW)['business']
+# # Actual values
+# y_act = ['business' for i in test_set_dict['business']]
+# # Printing the confusion matrix
+# # The columns will show the instances predicted for each label,
+# # and the rows will show the actual number of instances for each label.
+# print(metrics.confusion_matrix(y_act, y_pred_business, labels=["business"]))
+# # Printing the precision and recall, among other metrics
+# print(metrics.classification_report(
+#     y_act, y_pred_business, labels=["business"]))
