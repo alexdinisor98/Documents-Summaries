@@ -194,11 +194,11 @@ raw_precision = get_precision(test_set_dict, predict(
     test_set_dict, prior_probability, word_probability, RAW))
 print(raw_precision)
 
-# Uncomment selected lines for different text preprocessing methods.
+raw_recall = {c: get_recall(
+    test_set_dict, predict(test_set_dict, prior_probability, word_probability, RAW), c) for c in ck}
+print(raw_recall)
 
-# raw_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, prior_probability, word_probability, RAW), c) for c in ck}
-# print(raw_recall)
+# Uncomment selected lines for different text preprocessing methods.
 
 # # removing stop words
 # print('---- RM STOP WORDS ----')
@@ -213,14 +213,14 @@ print(raw_precision)
 
 
 # with lemmatization of words with stop words removal
-print()
-print('---- LEMM WITH RM STOP WORDS ----')
-word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
+# print()
+# print('---- LEMM WITH RM STOP WORDS ----')
+# word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
 
-lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
-    test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW))
-print(lemm_with_rm_stopw_precision)
+# lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
+#     test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW))
+# print(lemm_with_rm_stopw_precision)
 
-lemm_with_rm_stopw_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
-print(lemm_with_rm_stopw_recall)
+# lemm_with_rm_stopw_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
+# print(lemm_with_rm_stopw_recall)
