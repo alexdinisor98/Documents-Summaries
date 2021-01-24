@@ -160,7 +160,6 @@ def get_precision(test_set_dict, predictions):
         for key_doc in test_set_dict[key_class]:
             if key_class == predictions[key_class][key_doc]:
                 num_correct += 1
-
     return num_correct / num_predictions
 
 
@@ -179,7 +178,6 @@ def get_recall(test_set_dict, predictions, article_class):
     for key_doc in test_set_dict[article_class]:
         if article_class == predictions[article_class][key_doc]:
             num_correct_ck += 1
-
     return num_correct_ck / float(num_documents_ck)
 
 
@@ -196,11 +194,13 @@ raw_precision = get_precision(test_set_dict, predict(
     test_set_dict, prior_probability, word_probability, RAW))
 print(raw_precision)
 
-raw_recall = {c: get_recall(
-    test_set_dict, predict(test_set_dict, prior_probability, word_probability, RAW), c) for c in ck}
-print(raw_recall)
+# Uncomment selected lines for different text preprocessing methods.
 
-# removing stop words
+# raw_recall = {c: get_recall(
+#     test_set_dict, predict(test_set_dict, prior_probability, word_probability, RAW), c) for c in ck}
+# print(raw_recall)
+
+# # removing stop words
 # print('---- RM STOP WORDS ----')
 # word_probability = get_word_probability(training_set_dict, RM_STOP_WORDS)
 
@@ -212,42 +212,15 @@ print(raw_recall)
 # print(rm_stop_words_recall)
 
 
-# # with lemmatization of words
-# print()
-# print('---- LEMMATIZATION ----')
-# word_prob = get_word_probability(training_set_dict, LEMMATIZATION)
+# with lemmatization of words with stop words removal
+print()
+print('---- LEMM WITH RM STOP WORDS ----')
+word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
 
-# lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
-#     test_set_dict, prior_probability, word_prob, LEMMATIZATION))
-# print(lemm_with_rm_stopw_precision)
+lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
+    test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW))
+print(lemm_with_rm_stopw_precision)
 
-# lemm_with_rm_stopw_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMMATIZATION), c) for c in ck}
-# print(lemm_with_rm_stopw_recall)
-
-
-# # with lemmatization of words with stop words removal
-# print()
-# print('---- LEMM WITH RM STOP WORDS ----')
-# word_prob = get_word_probability(training_set_dict, LEMM_WITH_RM_STOPW)
-
-# lemm_with_rm_stopw_precision = get_precision(test_set_dict, predict(
-#     test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW))
-# print(lemm_with_rm_stopw_precision)
-
-# lemm_with_rm_stopw_recall = {c: get_recall(
-#     test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
-# print(lemm_with_rm_stopw_recall)
-
-# # Predicted values
-# y_pred_business = predict(test_set_dict, prior_probability,
-#                           word_probability, RAW)['business']
-# # Actual values
-# y_act = ['business' for i in test_set_dict['business']]
-# # Printing the confusion matrix
-# # The columns will show the instances predicted for each label,
-# # and the rows will show the actual number of instances for each label.
-# print(metrics.confusion_matrix(y_act, y_pred_business, labels=["business"]))
-# # Printing the precision and recall, among other metrics
-# print(metrics.classification_report(
-#     y_act, y_pred_business, labels=["business"]))
+lemm_with_rm_stopw_recall = {c: get_recall(
+    test_set_dict, predict(test_set_dict, prior_probability, word_prob, LEMM_WITH_RM_STOPW), c) for c in ck}
+print(lemm_with_rm_stopw_recall)
