@@ -1,5 +1,5 @@
 # Documents-Summaries
-Naive Bayes implementation for News Classifier and Text Summarization.
+Naive Bayes implementation from scratch in Python for News Classifier and Text Summarizer.
 
 Dataset is collected from BBC News containing articles 
 from 5 categories (business, entertainment, politics, sport, tech).
